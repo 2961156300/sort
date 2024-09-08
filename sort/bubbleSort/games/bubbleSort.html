@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bubble Sort Visualization</title>
+</head>
+<div id="app">
+    <!-- 冒泡排序 -->
+    <div class="para">
+        <div style="width: 30%;">
+            <span style="font-size: 40px;">冒泡排序</span>
+        </div>
+      <div style="width: 40%;">
+        <div><span>排序列表(空格隔开)：</span><input type="text" v-model="sortArr"></div>
+        <div><span>自动执行间隔(毫秒)：</span><input type="number" v-model="speed"></div>
+      </div>
+      <div style="width: 30%;display: flex;justify-content: center;align-items: end;">
+        <span style="font-size: 40px;">第{{round}}轮比较了{{step}}次</span>
+      </div>
+      
+    </div>
+    <div class="control">
+      <button v-on:click="initSortItems">重置</button>
+      <button v-on:click="play">单步执行</button>
+      <button v-on:click="start">自动执行</button>
+      <button v-on:click="stop">暂停</button>
+    </div>
+    <div class="container">
+        <transition-group tag="ul" name="sort" class="sort">
+            <!-- <li v-for="item in sortItems" :key="item.value"
+              :style="{'backgroundColor':item.color,width:item.width,height:item.height,'line-height':item.size}">{{item.value}}
+            </li> -->
+            <li v-for="item in sortItems" :key="item.value"
+              :style="{'border':'5px solid ' + item.color,'backgroundColor':item.color,width:item.size,height:item.size,'line-height':item.size}">{{item.value}}
+          </li>
+          </transition-group>
+    </div>    
+  </div>
+  </html>
+  <script src="./vue.js"></script>
+
+<style>
+    
+    #app {
+      margin: 20px 10px;
+    }
+    body {
+            font-family: Arial, sans-serif;
+            background-color: #e0f7fa;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            /* align-items: center; */
+        }
+    .para {
+      display: flex;
+      flex-wrap: nowrap;
+    }
+
+    .control {
+      margin: 20px;
+      margin-left: 40px;
+    }
+
+    .control button {
+      padding: 5px 12px;
+      margin: 0 5px;
+    }
+
+    .sort {
+      list-style-type: none;
+      margin: 0px;
+      padding: 0px;
+      display: flex;
+    background-color: #00acc1;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    min-height: 400px;
+        
+    }
+
+    .sort li {
+      border: 1px solid #e2dcdc;
+      padding: 5px;
+      margin: 24px;
+      display: inline-block;
+      vertical-align: middle;
+      border-radius: 50%;
+      color:#e2dcdc;
+      text-align: center;
+
+      font-size: 50px;
+      transition: all 0.7s ease-in-out;
+      background-image: url("image.png");
+      background-size: cover;
+    }
+    button {
+            padding: 10px 20px;
+            background-color: #00796b;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+    
+</style>
+<script>
+    const bubbleColor = {
+  default: '#ffeb3b',
+  inprocess: 'red',
+  completed: 'mediumspringgreen'
+}
+
+function resetColor(items, color = bubbleColor.default) {
+  items.forEach(item => {
+    if (item.color != bubbleColor.completed)
+      item.color = color;
+  });
+}
+
+//定义一个排序对象，包装待排序元素
+function SortItem(n) {
+  this.value = n;
+  this.size = 30  +n *10 + 'px';  //泡泡大小，初试大小30px
+  // this.height = 20 * n + 'px';
+  // this.width = 80 + 'px';
+  this.color = bubbleColor.default;
+}
+//生成排序对象集合，参数为排序元素字符串，如“9 100 6 17 3 1”
+function generateSortItems(arrStr) {
+  let arrItems = [];
+  let arr = arrStr.trim().split(' ');
+  for (let i = 0; i < arr.length; i++) {
+    arrItems[i] = new SortItem(window.parseInt(arr[i]));
+  }
+  return arrItems;
+}
+//迭代器实现排序步骤的拆分
+function* generateSortFunc(items) {
+  const len = items.length;
+  for (let i = 0; i < len - 1; i++) { 
+    for (let j = 0; j < len - i - 1; j++) {
+      //迭代器返回的是一个（闭包）函数，为每一个排序步骤
+      yield () => {
+        //执行排序前重置泡泡颜色
+        resetColor(items);
+        //正在排序的泡泡元素高亮
+        items[j].color = bubbleColor.inprocess;
+        items[j + 1].color = bubbleColor.inprocess;
+        if (items[j].value < items[j + 1].value) {
+          [items[j], items[j + 1]] = [items[j + 1], items[j]];
+        }
+      }
+    }
+    //完成一轮排序，末尾泡泡元素标记为完成态颜色
+    items[len - i - 1].color = bubbleColor.completed;    
+    
+  }
+}
+
+let app = new Vue({
+  el: "#app",
+  data: {
+    sortArr: '12 5 23 6 2',
+    speed: 1000,
+    isAutoPlay: false,
+    sortItems: null, //排序对象集合
+    sortFunc: null, //排序迭代器
+    step:0,
+    round:0
+  },
+  methods: {
+    //初始化排序对象集合
+    initSortItems: function () {
+      this.round = 0;
+      this.step = 0;
+      this.stop();
+      this.sortItems = generateSortItems(this.sortArr);
+      this.sortFunc = generateSortFunc(this.sortItems);
+    },
+    //单步执行
+    play() {
+      let next = this.sortFunc.next();
+      let completed = this.sortItems.filter(item => item.color == bubbleColor.completed).length;
+      if(this.round -1  < completed && completed < this.sortItems.length -1 && !this.done){
+        this.round +=1;
+        this.step = 0;
+        
+      }
+      if(!next.done){
+        this.step+=1
+      }
+      
+      if (next.done) {
+        this.sortItems.forEach(item => {item.color = bubbleColor.completed});
+        this.stop();
+      }
+      else
+        next.value();
+    },
+    //启动自动执行
+    start() {
+      this.isAutoPlay = true;
+      this.doAutoPlay();
+    },
+    //暂停自动执行
+    stop() {
+      this.isAutoPlay = false;
+    },
+    // 自动执行，干活的
+    doAutoPlay() {
+      if (!this.isAutoPlay) return;
+      setTimeout(() => {
+        this.play();
+        this.doAutoPlay();
+      }, (this.speed));
+    },
+ 
+  },
+  created: function () { this.initSortItems() },
+});
+</script>
